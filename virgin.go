@@ -3,24 +3,24 @@ package virgin
 import "net/http"
 
 type Virgin struct {
-	Route  *Route
+	Router *Router
 	Server *http.Server
 }
 
 func NewVirgin() *Virgin {
-	route := NewRoute()
-	Virgin := &Virgin{Route: route, Server: &http.Server{}}
+	Router := NewRouter()
+	Virgin := &Virgin{Router: Router, Server: &http.Server{}}
 
 	return Virgin
 }
 
-func (virgin *Virgin) AddRoute(method, pattern string, handleFunc HandleFunc) {
-	virgin.Route.Add(method, pattern, handleFunc)
+func (virgin *Virgin) AddRoute(method, pattern string, handlerFunc HandlerFunc) {
+	virgin.Router.Add(method, pattern, handlerFunc)
 }
 
 func (virgin *Virgin) Listen(port string) error {
-	virgin.Server.Handler = virgin.Route
+	virgin.Server.Handler = virgin.Router
 	virgin.Server.Addr = port
-	
+
 	return virgin.Server.ListenAndServe()
 }
