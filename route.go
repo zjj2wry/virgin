@@ -1,7 +1,6 @@
 package virgin
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 )
@@ -189,155 +188,65 @@ func (n *node) findChildWithLabel(l byte) *node {
 // 	return NotFoundHandler
 // }
 
-// func (r *Router) Find(method, path string, context Context) {
-// 	cn := r.tree // Current node as root
+func (n *node) Find(path string) (h HandlerFunc) {
 
-// 	var (
-// 		search  = path
-// 		c       *node  // Child node
-// 		n       int    // Param counter
-// 		nk      kind   // Next kind
-// 		nn      *node  // Next node
-// 		ns      string // Next search
-// 		pvalues = context.ParamValues()
-// 	)
+	var search = path
+	// Search order static > param > any
+	for {
+		l := 0
+		sl := len(search)
+		pl := len(n.prefix)
 
-// 	// Search order static > param > any
-// 	for {
-// 		if search == "" {
-// 			goto End
-// 		}
+		max := pl
+		if sl < max {
+			max = sl
+		}
+		for ; l < max && search[l] == n.prefix[l]; l++ {
+		}
 
-// 		pl := 0 // Prefix length
-// 		l := 0  // LCP length
+		if l == pl {
+			// Continue search
+			search = search[l:]
+		} else {
+			// cn = nn
+			// search = ns
+			// if nk == pkind {
+			// 	goto Param
+			// } else if nk == akind {
+			// 	goto Any
+			// }
+			// Not found
+			return nil
+		}
 
-// 		if cn.label != ':' {
-// 			sl := len(search)
-// 			pl = len(cn.prefix)
+		if search == "" {
+			return n.handlerFunc
+		}
 
-// 			// LCP
-// 			max := pl
-// 			if sl < max {
-// 				max = sl
-// 			}
-// 			for ; l < max && search[l] == cn.prefix[l]; l++ {
-// 			}
-// 		}
-
-// 		if l == pl {
-// 			// Continue search
-// 			search = search[l:]
-// 		} else {
-// 			cn = nn
-// 			search = ns
-// 			if nk == pkind {
-// 				goto Param
-// 			} else if nk == akind {
-// 				goto Any
-// 			}
-// 			// Not found
-// 			return
-// 		}
-
-// 		if search == "" {
-// 			goto End
-// 		}
-
-// 		// Static node
-// 		if c = cn.findChild(search[0], skind); c != nil {
-// 			// Save next
-// 			if cn.prefix[len(cn.prefix)-1] == '/' { // Issue #623
-// 				nk = pkind
-// 				nn = cn
-// 				ns = search
-// 			}
-// 			cn = c
-// 			continue
-// 		}
-
-// 		// Param node
-// 	Param:
-// 		if c = cn.findChildByKind(pkind); c != nil {
-// 			// Issue #378
-// 			if len(pvalues) == n {
-// 				continue
-// 			}
-
-// 			// Save next
-// 			if cn.prefix[len(cn.prefix)-1] == '/' { // Issue #623
-// 				nk = akind
-// 				nn = cn
-// 				ns = search
-// 			}
-
-// 			cn = c
-// 			i, l := 0, len(search)
-// 			for ; i < l && search[i] != '/'; i++ {
-// 			}
-// 			pvalues[n] = search[:i]
-// 			n++
-// 			search = search[i:]
-// 			continue
-// 		}
-
-// 		// Any node
-// 	Any:
-// 		if cn = cn.findChildByKind(akind); cn == nil {
-// 			if nn != nil {
-// 				cn = nn
-// 				nn = nil // Next
-// 				search = ns
-// 				if nk == pkind {
-// 					goto Param
-// 				} else if nk == akind {
-// 					goto Any
-// 				}
-// 			}
-// 			// Not found
-// 			return
-// 		}
-// 		pvalues[len(cn.paramname)-1] = search
-// 		goto End
-// 	}
-
-// End:
-// 	context.SetHandler(cn.findHandler(method))
-// 	context.SetPath(cn.ppath)
-// 	context.SetParamNames(cn.paramname...)
-
-// 	// NOTE: Slow zone...
-// 	if context.Handler() == nil {
-// 		context.SetHandler(cn.checkMethodNotAllowed())
-
-// 		// Dig further for any, might have an empty value for *, e.g.
-// 		// serving a directory. Issue #207.
-// 		if cn = cn.findChildByKind(akind); cn == nil {
-// 			return
-// 		}
-// 		if h := cn.findHandler(method); h != nil {
-// 			context.SetHandler(h)
-// 		} else {
-// 			context.SetHandler(cn.checkMethodNotAllowed())
-// 		}
-// 		context.SetPath(cn.ppath)
-// 		context.SetParamNames(cn.paramname...)
-// 		pvalues[len(cn.paramname)-1] = ""
-// 	}
-
-// 	return
-// }
+		// Static node
+		if n1 := n.findChildWithLabel(search[0]); n1 != nil {
+			n = n1
+			continue
+		}
+	}
+}
 
 func (r *Router) ServeHTTP(rw http.ResponseWriter, re *http.Request) {
 	method := re.Method
 	uri := re.URL.Path
 	log.Printf("%s %s", method, uri)
-	handleMap := r.tree["GET"]
-	fmt.Println(r.tree)
-	fmt.Println(r.tree["GET"])
-	handfunc := handleMap.handlerFunc
+	tree, ok := r.tree[method]
+	if !ok {
+		log.Println("method not allow")
+	}
+	h := tree.Find(uri)
+	if h == nil {
+		http.NotFound(rw, re)
+		return
+	}
 	ctx := &Context{
 		re,
 		rw,
 	}
-	handfunc(ctx)
+	h(ctx)
 }
