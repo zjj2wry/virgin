@@ -14,6 +14,14 @@ type Context struct {
 func (c Context) setParamname(s string) {
 	c.paramname = s
 }
+
 func (c Context) setParamvalue(i string) {
 	c.paramvalue = i
+}
+
+func(c Context) Param(key string)(value string){
+	if key==c.paramname{
+		return c.paramvalue
+	}
+	return ""
 }

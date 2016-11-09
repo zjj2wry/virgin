@@ -3,13 +3,18 @@ package virgin
 import (
 	"log"
 	"net/http"
+	"fmt"
+	"time"
 )
 
-// "log"
-
-type HandlerFunc func(*Context)
+const (
+	NOTFOUND string ="NOT FOUND"
+	FOUND	 string = "FOUND"
+)
 
 type (
+	HandlerFunc func(*Context)
+
 	Router struct {
 		tree map[string]*node
 	}
@@ -17,7 +22,6 @@ type (
 		label       byte
 		prefix      string
 		child       []*node
-		paramname   string
 		handlerFunc HandlerFunc
 	}
 )
@@ -40,29 +44,24 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 	for i, l := 0, len(path); i < l; i++ {
 		if path[i] == ':' {
 			if path[i-1] == '/' {
-				r.insert(method, path[:i], nil, "")
-				r.insert(method, path, h, path[i+1:])
+				r.insert(method, path[:i], nil)
+				r.insert(method, path, h)
+				fmt.Println(path[:i],path)
 				return
 			}
 		} else if path[i] == '*' {
 			if path[i-1] == '/' {
-				r.insert(method, path[:i], nil, "")
-				r.insert(method, path, h, "")
+				r.insert(method, path[:i], nil)
+				r.insert(method, path, h)
 				return
 			}
 		}
 	}
 
-	r.insert(method, path, h, "")
+	r.insert(method, path, h)
 }
 
-func Min(a, b int) int {
-	if a > b {
-		return b
-	}
-	return a
-}
-func (n *node) Add(method, path string, h HandlerFunc, paramname string) {
+func (n *node) Add(path string, h HandlerFunc) {
 	search := path
 
 	for {
@@ -83,14 +82,12 @@ func (n *node) Add(method, path string, h HandlerFunc, paramname string) {
 			n.prefix = search
 			if h != nil {
 				n.handlerFunc = h
-				n.paramname = paramname
 			}
 		} else if l < pl {
 			n1 := &node{
 				n.label,
 				n.prefix,
 				n.child,
-				n.paramname,
 				n.handlerFunc,
 			}
 
@@ -101,14 +98,13 @@ func (n *node) Add(method, path string, h HandlerFunc, paramname string) {
 
 			if l == sl {
 				n.handlerFunc = h
-				n.paramname = paramname
+
 			} else {
 				prefix := search[l:]
 				n2 := &node{
 					prefix[0],
 					prefix,
 					nil,
-					paramname,
 					h,
 				}
 				n.child = append(n.child, n2)
@@ -117,7 +113,7 @@ func (n *node) Add(method, path string, h HandlerFunc, paramname string) {
 			search = search[l:]
 			c := n.findChildWithLabel(search[0])
 			if c != nil {
-				// Go deeper
+				// 继续检索
 				n = c
 				continue
 			}
@@ -125,41 +121,28 @@ func (n *node) Add(method, path string, h HandlerFunc, paramname string) {
 				search[0],
 				search,
 				nil,
-				paramname,
+
 				h,
 			}
 			n.child = append(n.child, n1)
 		} else {
-			// Node already exists
+			// 遇到参数路由添加的nil handle
 			if h != nil {
 				n.handlerFunc = h
-				n.paramname = paramname
 			}
 		}
 		return
 	}
 }
-func (r *Router) insert(method, path string, h HandlerFunc, paramname string) {
+
+func (r *Router) insert(method, path string, h HandlerFunc) {
 	n := r.tree[method]
 	if n == nil {
 		n = &node{}
 	}
-	n.Add(method, path, h, paramname)
+	n.Add(path, h)
 	r.tree[method] = n
 }
-
-// func (n *node) addChild(c *node) {
-// 	n.children = append(n.children, c)
-// }
-
-// func (n *node) findChild(l byte, t kind) *node {
-// 	for _, c := range n.children {
-// 		if c.label == l && c.kind == t {
-// 			return c
-// 		}
-// 	}
-// 	return nil
-// }
 
 func (n *node) findChildWithLabel(l byte) *node {
 	for _, c := range n.child {
@@ -170,28 +153,9 @@ func (n *node) findChildWithLabel(l byte) *node {
 	return nil
 }
 
-// func (n *node) findChildByKind(t kind) *node {
-// 	for _, c := range n.children {
-// 		if c.kind == t {
-// 			return c
-// 		}
-// 	}
-// 	return nil
-// }
-
-// func (n *node) checkMethodNotAllowed() HandlerFunc {
-// 	for _, m := range methods {
-// 		if h := n.findHandler(m); h != nil {
-// 			return MethodNotAllowedHandler
-// 		}
-// 	}
-// 	return NotFoundHandler
-// }
-
 func (n *node) Find(path string) (*node, string) {
-
 	var search = path
-	// Search order static > param > any
+
 	for {
 		l := 0
 		sl := len(search)
@@ -205,7 +169,6 @@ func (n *node) Find(path string) (*node, string) {
 		}
 
 		if l == pl {
-			// Continue search
 			search = search[l:]
 		} else {
 			// 参数路由
@@ -235,33 +198,38 @@ func (n *node) Find(path string) (*node, string) {
 }
 
 func (r *Router) ServeHTTP(rw http.ResponseWriter, re *http.Request) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in f", r)
+		}
+	}()
+	t:=time.Now()
 	method := re.Method
 	uri := re.URL.Path
-	log.Printf("%s %s", method, uri)
 
 	tree, ok := r.tree[method]
-	log.Println(tree)
+	
 	if !ok {
-		log.Println("method not allow")
-	}
-	n, paramname := tree.Find(uri)
-	log.Println(n)
-	if n == nil {
-		http.NotFound(rw, re)
+		http.NotFound(rw,re)
 		return
 	}
-	if n.handlerFunc == nil {
+	n, paramname := tree.Find(uri)
+	if n == nil|| n.handlerFunc == nil {
 		http.NotFound(rw, re)
+		dur:=time.Since(t)
+		log.Printf("%s %10s %10s %10s", method, uri,dur.String(),NOTFOUND)
 		return
 	}
 	ctx := &Context{
 		Request:  re,
 		Response: rw,
 	}
-	if n.paramname != "" {
+	// 设置参数获取
+	if paramname != "" {
 		ctx.setParamname(n.prefix[1:])
-		ctx.setParamvalue(paramname)
-		log.Println(n.prefix[1:], paramname)
+		ctx.setParamvalue(paramname)	
 	}
 	n.handlerFunc(ctx)
-}
+	dur:=time.Since(t)
+	log.Printf("\033[32m%s %10s %10s %10s", method, uri,dur.String(),FOUND)
+}                         
