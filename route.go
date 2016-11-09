@@ -41,13 +41,13 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 		if path[i] == ':' {
 			if path[i-1] == '/' {
 				r.insert(method, path[:i], nil, "")
-				r.insert(method, path[i:], h, path[i+1:])
+				r.insert(method, path, h, path[i+1:])
 				return
 			}
 		} else if path[i] == '*' {
 			if path[i-1] == '/' {
 				r.insert(method, path[:i], nil, "")
-				r.insert(method, path[i:], h, "")
+				r.insert(method, path, h, "")
 				return
 			}
 		}
@@ -188,7 +188,7 @@ func (n *node) findChildWithLabel(l byte) *node {
 // 	return NotFoundHandler
 // }
 
-func (n *node) Find(path string) (h HandlerFunc) {
+func (n *node) Find(path string) (*node, string) {
 
 	var search = path
 	// Search order static > param > any
@@ -208,22 +208,25 @@ func (n *node) Find(path string) (h HandlerFunc) {
 			// Continue search
 			search = search[l:]
 		} else {
-			// cn = nn
-			// search = ns
-			// if nk == pkind {
-			// 	goto Param
-			// } else if nk == akind {
-			// 	goto Any
-			// }
-			// Not found
-			return nil
+			// 参数路由
+			for _, v := range n.child {
+				if v.label == ':' {
+					return v, search
+				}
+			}
+			//全部匹配
+			for _, v := range n.child {
+				if v.label == '*' {
+					return v, ""
+				}
+			}
+			return nil, ""
 		}
-
+		//绝对路由
 		if search == "" {
-			return n.handlerFunc
+			return n, ""
 		}
 
-		// Static node
 		if n1 := n.findChildWithLabel(search[0]); n1 != nil {
 			n = n1
 			continue
@@ -235,18 +238,30 @@ func (r *Router) ServeHTTP(rw http.ResponseWriter, re *http.Request) {
 	method := re.Method
 	uri := re.URL.Path
 	log.Printf("%s %s", method, uri)
+
 	tree, ok := r.tree[method]
+	log.Println(tree)
 	if !ok {
 		log.Println("method not allow")
 	}
-	h := tree.Find(uri)
-	if h == nil {
+	n, paramname := tree.Find(uri)
+	log.Println(n)
+	if n == nil {
+		http.NotFound(rw, re)
+		return
+	}
+	if n.handlerFunc == nil {
 		http.NotFound(rw, re)
 		return
 	}
 	ctx := &Context{
-		re,
-		rw,
+		Request:  re,
+		Response: rw,
 	}
-	h(ctx)
+	if n.paramname != "" {
+		ctx.setParamname(n.prefix[1:])
+		ctx.setParamvalue(paramname)
+		log.Println(n.prefix[1:], paramname)
+	}
+	n.handlerFunc(ctx)
 }

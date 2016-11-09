@@ -5,6 +5,15 @@ import (
 )
 
 type Context struct {
-	Request  *http.Request
-	Response http.ResponseWriter
+	Request    *http.Request
+	Response   http.ResponseWriter
+	paramname  string
+	paramvalue string
+}
+
+func (c Context) setParamname(s string) {
+	c.paramname = s
+}
+func (c Context) setParamvalue(i string) {
+	c.paramvalue = i
 }
