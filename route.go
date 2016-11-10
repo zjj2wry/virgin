@@ -46,7 +46,6 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 			if path[i-1] == '/' {
 				r.insert(method, path[:i], nil)
 				r.insert(method, path, h)
-				fmt.Println(path[:i],path)
 				return
 			}
 		} else if path[i] == '*' {
@@ -85,12 +84,12 @@ func (n *node) Add(path string, h HandlerFunc) {
 			}
 		} else if l < pl {
 			n1 := &node{
-				n.label,
-				n.prefix,
+				n.prefix[l:][0],
+				n.prefix[l:],
 				n.child,
 				n.handlerFunc,
 			}
-
+			fmt.Println("n1:",n1)
 			n.label = n.prefix[0]
 			n.prefix = n.prefix[:l]
 
@@ -121,7 +120,6 @@ func (n *node) Add(path string, h HandlerFunc) {
 				search[0],
 				search,
 				nil,
-
 				h,
 			}
 			n.child = append(n.child, n1)
@@ -137,10 +135,12 @@ func (n *node) Add(path string, h HandlerFunc) {
 
 func (r *Router) insert(method, path string, h HandlerFunc) {
 	n := r.tree[method]
+	
 	if n == nil {
 		n = &node{}
 	}
 	n.Add(path, h)
+	fmt.Println(n)
 	r.tree[method] = n
 }
 
@@ -217,7 +217,7 @@ func (r *Router) ServeHTTP(rw http.ResponseWriter, re *http.Request) {
 	if n == nil|| n.handlerFunc == nil {
 		http.NotFound(rw, re)
 		dur:=time.Since(t)
-		log.Printf("%s %10s %10s %10s", method, uri,dur.String(),NOTFOUND)
+		log.Printf("\033[31;1m%s %10s %10s %10s\033[0m", method, uri,dur.String(),NOTFOUND)
 		return
 	}
 	ctx := &Context{
@@ -227,9 +227,9 @@ func (r *Router) ServeHTTP(rw http.ResponseWriter, re *http.Request) {
 	// 设置参数获取
 	if paramname != "" {
 		ctx.setParamname(n.prefix[1:])
-		ctx.setParamvalue(paramname)	
+		ctx.setParamvalue(paramname)
 	}
 	n.handlerFunc(ctx)
 	dur:=time.Since(t)
-	log.Printf("\033[32m%s %10s %10s %10s", method, uri,dur.String(),FOUND)
+	log.Printf("\033[32;1m%s %10s %10s %10s\033[0m", method, uri,dur.String(),FOUND)
 }                         

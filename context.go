@@ -11,17 +11,17 @@ type Context struct {
 	paramvalue string
 }
 
-func (c Context) setParamname(s string) {
+func (c *Context) setParamname(s string) {
 	c.paramname = s
 }
 
-func (c Context) setParamvalue(i string) {
+func (c *Context) setParamvalue(i string) {
 	c.paramvalue = i
 }
 
-func(c Context) Param(key string)(value string){
+func(c *Context) Param(key string)(value string){
 	if key==c.paramname{
 		return c.paramvalue
 	}
-	return ""
+	return c.paramvalue
 }
