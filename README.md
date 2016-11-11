@@ -1,3 +1,21 @@
+# virgin
+
+golang web framework
+
+# already implement feature
+
+radix tree route;
+any param route;
+config read;
+recover handle
+
+#### Install
+
+    go get -v github.com/zjj2wry/virgin
+
+#### Usage
+
+```go
 package main
 
 import (
@@ -45,3 +63,4 @@ func main() {
 
 	log.Fatal(v.Listen(":8080"))
 }
+```
