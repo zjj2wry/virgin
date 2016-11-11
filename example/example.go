@@ -8,23 +8,27 @@ import (
 	"virgin"
 )
 
+type User struct{
+	User string
+	Age int64
+}
+
 func test(ctx *virgin.Context) {
 	userid:=ctx.Param("a")
 	panic("baizhi")
 	fmt.Fprintf(ctx.Response, "Request Method:%s,paramvalue:%s", ctx.Request.Method,userid)
 }
 func test2(ctx *virgin.Context) {
-	fmt.Fprintf(ctx.Response, "Request:%s", ctx.Request.Method)
+	ctx.Json(User{
+		"baizhi",
+		20,
+	})
 }
-
-// func test3(ctx *virgin.Context) {
-// 	fmt.Fprintf(ctx.Response, "Request")
-// }
 
 func main() {
 	v := virgin.NewVirgin()
 	v.AddRoute("GET", "/a", test)
-	v.AddRoute("GET", "/ab", test2)
+	v.AddRoute("POST", "/ab", test2)
 	v.AddRoute("GET", "add", test)
 	// v.AddRoute("GET", "/b/*", test)
 	v.AddRoute("GET", "/c/:a", test)

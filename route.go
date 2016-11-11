@@ -210,7 +210,7 @@ func (r *Router) ServeHTTP(rw http.ResponseWriter, re *http.Request) {
 		Request:  re,
 		Response: rw,
 	}
-
+	// 程序执行的中的异常，nil HandlerFunc
 	defer Recovey(ctx)
 
 	t:=time.Now()
