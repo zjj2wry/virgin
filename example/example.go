@@ -10,6 +10,7 @@ import (
 
 func test(ctx *virgin.Context) {
 	userid:=ctx.Param("a")
+	panic("baizhi")
 	fmt.Fprintf(ctx.Response, "Request Method:%s,paramvalue:%s", ctx.Request.Method,userid)
 }
 func test2(ctx *virgin.Context) {
