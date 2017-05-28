@@ -30,8 +30,7 @@ func (c *Context) Param(key string) (value string) {
 }
 
 func (c *Context) Json(i interface{}) {
-	log.Println("i",i)
-	b,err:=json.Marshal(&i)
+	b, err := json.Marshal(&i)
 	if err != nil {
 		log.Println(err)
 		return

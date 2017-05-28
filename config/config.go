@@ -2,11 +2,10 @@ package config
 
 import (
 	"bufio"
-	"errors"
 	"io"
+	"log"
 	"os"
 	"strings"
-	"config.1kf.com/server/base_go/log"
 )
 
 type Config struct {
@@ -17,10 +16,9 @@ func (this *Config) InitConfig(path string) {
 	this.params = make(map[string]string)
 
 	file, err := os.Open(path)
-	log.Info(file)
+	log.Println(file)
 	if err != nil {
-		log.Error(errors.New("app.conf can not find !"))
-		os.Exit(1)
+		log.Fatal("app.conf can not find !")
 	}
 	defer file.Close()
 
@@ -39,15 +37,6 @@ func (this *Config) InitConfig(path string) {
 			continue
 		}
 
-		//n1 := strings.Index(s, "[")
-		//n2 := strings.LastIndex(s, "]")
-		//if n1 > -1 && n2 > -1 && n2 > n1+1 {
-		//	this.strcet = strings.TrimSpace(s[n1+1 : n2])
-		//	continue
-		//}
-		//if len(this.strcet) == 0 {
-		//	continue
-		//}
 		index := strings.Index(s, "=")
 		if index < 0 {
 			continue

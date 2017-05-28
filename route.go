@@ -1,15 +1,15 @@
 package virgin
 
 import (
+	"fmt"
 	"log"
 	"net/http"
-	"fmt"
 	"time"
 )
 
 const (
-	NOTFOUND string ="NOT FOUND"
-	FOUND	 string = "FOUND"
+	NOTFOUND string = "NOT FOUND"
+	FOUND    string = "FOUND"
 )
 
 type (
@@ -23,7 +23,7 @@ type (
 		label       byte
 		prefix      string
 		child       []*node
-		handlerFunc HandlerFunc	//这个地方换成interface{}，node可以单独的拉出来使用，这是直接确认类型，后续使用不断言
+		handlerFunc HandlerFunc //这个地方换成interface{}，node可以单独的拉出来使用，这是直接确认类型，后续使用不断言
 	}
 )
 
@@ -65,7 +65,6 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 }
 
 func (n *node) Add(path string, h HandlerFunc) {
-
 	search := path
 
 	for {
@@ -95,7 +94,7 @@ func (n *node) Add(path string, h HandlerFunc) {
 				n.child,
 				n.handlerFunc,
 			}
-			fmt.Println("n1:",n1)
+			fmt.Println("n1:", n1)
 			n.label = n.prefix[0]
 			n.prefix = n.prefix[:l]
 
@@ -103,7 +102,7 @@ func (n *node) Add(path string, h HandlerFunc) {
 			// 被包含的情况，新添加的node变成父亲，原来的变成儿子
 			if l == sl {
 				n.handlerFunc = h
-			// 出头了，eg:开始的时候只有/a，加了一个/b，最后会变成3个，/ a b
+				// 出头了，eg:开始的时候只有/a，加了一个/b，最后会变成3个，/ a b
 			} else {
 				prefix := search[l:]
 				n2 := &node{
@@ -141,7 +140,6 @@ func (n *node) Add(path string, h HandlerFunc) {
 
 func (r *Router) insert(method, path string, h HandlerFunc) {
 	n := r.tree[method]
-	
 	if n == nil {
 		n = &node{}
 	}
@@ -213,31 +211,30 @@ func (r *Router) ServeHTTP(rw http.ResponseWriter, re *http.Request) {
 	// 程序执行的中的异常，nil HandlerFunc
 	defer Recovey(ctx)
 
-	t:=time.Now()
+	t := time.Now()
 	method := re.Method
 	uri := re.URL.Path
 
 	tree, ok := r.tree[method]
 	// 避免nil的panic
 	if !ok {
-		http.NotFound(rw,re)
+		http.NotFound(rw, re)
 		return
 	}
 	n, paramname := tree.Find(uri)
-	if n == nil|| n.handlerFunc == nil {
+	if n == nil || n.handlerFunc == nil {
 		http.NotFound(rw, re)
-		dur:=time.Since(t)
-		// 打出美美哒的日志
-		log.Printf("\033[31;1m%s %10s %10s %10s\033[0m", method, uri,dur.String(),NOTFOUND)
+		dur := time.Since(t)
+		log.Printf("\033[31;1m%s %10s %10s %10s\033[0m", method, uri, dur.String(), NOTFOUND)
 		return
 	}
-	
+
 	// 设置参数获取
 	if paramname != "" {
 		ctx.setParamname(n.prefix[1:])
 		ctx.setParamvalue(paramname)
 	}
 	n.handlerFunc(ctx)
-	dur:=time.Since(t)
-	log.Printf("\033[32;1m%s %10s %10s %10s\033[0m", method, uri,dur.String(),FOUND)
-}                         
+	dur := time.Since(t)
+	log.Printf("\033[32;1m%s %10s %10s %10s\033[0m", method, uri, dur.String(), FOUND)
+}
